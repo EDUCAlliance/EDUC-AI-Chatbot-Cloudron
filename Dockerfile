@@ -1,8 +1,7 @@
 FROM cloudron/base:4.2.0@sha256:46da2fffb36353ef714f97ae8e962bd2c212ca091108d768ba473078319a47f4
 
-# install Git und Supervisor 
+# install Git and Supervisor
 RUN apt-get update && apt-get install -y git supervisor
-
 
 RUN mkdir -p /app/data/public/
 WORKDIR /app/data/public/
@@ -27,10 +26,11 @@ RUN crudini --set /etc/php/8.1/apache2/php.ini PHP upload_max_filesize 256M && \
     crudini --set /etc/php/8.1/apache2/php.ini Session session.gc_probability 1 && \
     crudini --set /etc/php/8.1/apache2/php.ini Session session.gc_divisor 100
 
-COPY index.php start.sh /app/data/public/
+# Copy application files (except the start.sh which is now inlined)
+COPY index.php /app/data/public/
 COPY llm_config.json connector.php /app/data/public/
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+
 RUN chown -R www-data.www-data /app/data/public
 
-CMD [ "/start.sh" ]
+# Inline the startup commands previously in start.sh
+CMD ["bash", "-c", "set -eu; mkdir -p /run/app/sessions; APACHE_CONFDIR=''; . /etc/apache2/envvars; rm -f \"$APACHE_PID_FILE\"; exec /usr/sbin/apache2 -DFOREGROUND"]
