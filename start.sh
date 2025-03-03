@@ -5,9 +5,7 @@ set -eu
 mkdir -p /run/app/sessions
 
 mkdir -p /app/code
-mkdir -p /app/code/public
-
-
+chmod -R 777 /app/code/
 
 APACHE_CONFDIR="" source /etc/apache2/envvars
 rm -f "${APACHE_PID_FILE}"
