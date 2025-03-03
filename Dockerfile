@@ -28,6 +28,7 @@ RUN crudini --set /etc/php/8.1/apache2/php.ini PHP upload_max_filesize 256M && \
     crudini --set /etc/php/8.1/apache2/php.ini Session session.gc_divisor 100
 
 COPY index.php llm_config.json start.sh /app/data/public/
+RUN chmod +x start.sh
 RUN chown -R www-data.www-data /app/data/public/
 
 CMD [ "/app/data/public/start.sh" ]
