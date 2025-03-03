@@ -30,5 +30,6 @@ COPY index.php /app/code/public/
 COPY start.sh /app/code/
 RUN chown -R www-data.www-data /app/code/
 RUN chown -R www-data.www-data /app/data/
+RUN git config --global --add safe.directory /app/code/public
 
 CMD [ "/app/code/start.sh" ]
