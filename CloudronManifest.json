@@ -8,5 +8,10 @@
     "mysql": {}
   },
   "manifestVersion": 2,
-  "icon": ""
+  "icon": "",
+  "runtimeDirs": [
+    "/app/code/node_modules",
+    "/app/code/public",
+    "/app/code"
+  ]
 }
