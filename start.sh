@@ -5,7 +5,7 @@ set -eu
 mkdir -p /run/app/sessions
 
 mkdir -p /app/code
-chmod -R 777 /app/code/
+chmod -R 775 /app/code/
 chown -R www-data.www-data /app/code/
 
 APACHE_CONFDIR="" source /etc/apache2/envvars
