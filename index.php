@@ -6,6 +6,9 @@ $localPath = __DIR__;
 
 chdir($localPath);
 
+$branch = 'main';
+
+
 // Check if the directory is already initialized as a Git repository
 if (!is_dir($localPath . '/.git')) {
     error_log("Initializing Git repository...\n");
@@ -19,20 +22,13 @@ if (!is_dir($localPath . '/.git')) {
     // Fetch data from the remote repository
     $fetchOutput = shell_exec("git fetch origin 2>&1");
     
-    // Choose the branch: assume 'master' initially; if 'main' exists, then use it
-    $branch = 'master';
-    $remoteBranches = shell_exec("git branch -r");
-    if (strpos($remoteBranches, 'origin/main') !== false) {
-        $branch = 'main';
-    }
-    
     // Reset the local repository to match the remote branch state
     $resetOutput = shell_exec("git reset --hard origin/$branch 2>&1");
     
     error_log("Repository initialized and data fetched:\n" . $initOutput . $remoteOutput . $fetchOutput . $resetOutput);
 } else {
     // If the repository already exists, pull updates from the remote repository
-    $pullOutput = shell_exec("git pull 2>&1");
+    $pullOutput = shell_exec("git pull origin $branch 2>&1");
     error_log("Repository updated:\n" . $pullOutput);
 }
 ?>
