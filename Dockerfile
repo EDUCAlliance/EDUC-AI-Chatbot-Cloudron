@@ -2,6 +2,7 @@ FROM cloudron/base:4.2.0@sha256:46da2fffb36353ef714f97ae8e962bd2c212ca091108d768
 
 # install Git and Supervisor
 RUN apt-get update && apt-get install -y git supervisor
+ENV GIT_CONFIG_GLOBAL=/app/code/public/.gitconfig
 
 RUN mkdir -p /app/data
 WORKDIR /app/code
@@ -30,6 +31,5 @@ COPY index.php /app/code/public/
 COPY start.sh /app/code/
 RUN chown -R www-data.www-data /app/code/
 RUN chown -R www-data.www-data /app/data/
-RUN git config --global --add safe.directory /app/code/public
 
 CMD [ "/app/code/start.sh" ]
