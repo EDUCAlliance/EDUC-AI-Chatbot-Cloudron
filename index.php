@@ -6,7 +6,7 @@ $localPath = __DIR__;
 
 chdir($localPath);
 
-$branch = 'main';
+$branch = 'dev';
 
 
 // Check if the directory is already initialized as a Git repository
@@ -28,7 +28,7 @@ if (!is_dir($localPath . '/.git')) {
     error_log("Repository initialized and data fetched:\n" . $initOutput . $remoteOutput . $fetchOutput . $resetOutput);
 } else {
     // If the repository already exists, pull updates from the remote repository
-    $pullOutput = shell_exec("git pull origin $branch 2>&1");
+    $pullOutput = shell_exec("git pull --rebase origin $branch 2>&1");
     error_log("Repository updated:\n" . $pullOutput);
 }
 ?>
