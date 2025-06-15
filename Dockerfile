@@ -58,8 +58,13 @@ RUN crudini --set /etc/php/8.1/apache2/php.ini PHP upload_max_filesize 256M && \
 COPY public/ /app/code/public/
 COPY admin/ /app/code/admin/
 COPY assets/ /app/code/assets/
+COPY scripts/ /app/code/scripts/
 COPY start.sh /app/code/
 COPY .gitignore /app/code/public/
+
+# Ensure directories and permissions are set correctly
+RUN mkdir -p /app/code/admin/ajax \
+    && chmod +x /app/code/scripts/deploy-background.php
 
 # Set permissions
 RUN chown -R www-data.www-data /app/code/

@@ -8,19 +8,12 @@ function getDbConnection() {
     static $connection = null;
     
     if ($connection === null) {
-        // Debug: Log environment variables for troubleshooting
-        error_log("Database connection attempt - Environment variables check:");
-        error_log("CLOUDRON_POSTGRESQL_HOST: " . ($_ENV['CLOUDRON_POSTGRESQL_HOST'] ?? 'NOT_SET'));
-        error_log("CLOUDRON_POSTGRESQL_PORT: " . ($_ENV['CLOUDRON_POSTGRESQL_PORT'] ?? 'NOT_SET'));
-        
         // Use Cloudron environment variables with better fallback handling
         $host = getenv('CLOUDRON_POSTGRESQL_HOST') ?: $_ENV['CLOUDRON_POSTGRESQL_HOST'] ?? $_ENV['POSTGRESQL_HOST'] ?? 'postgresql';
         $port = getenv('CLOUDRON_POSTGRESQL_PORT') ?: $_ENV['CLOUDRON_POSTGRESQL_PORT'] ?? $_ENV['POSTGRESQL_PORT'] ?? '5432';
         $database = getenv('CLOUDRON_POSTGRESQL_DATABASE') ?: $_ENV['CLOUDRON_POSTGRESQL_DATABASE'] ?? $_ENV['POSTGRESQL_DATABASE'] ?? 'app';
         $username = getenv('CLOUDRON_POSTGRESQL_USERNAME') ?: $_ENV['CLOUDRON_POSTGRESQL_USERNAME'] ?? $_ENV['POSTGRESQL_USERNAME'] ?? 'postgres';
         $password = getenv('CLOUDRON_POSTGRESQL_PASSWORD') ?: $_ENV['CLOUDRON_POSTGRESQL_PASSWORD'] ?? $_ENV['POSTGRESQL_PASSWORD'] ?? '';
-        
-        error_log("Attempting connection to: {$host}:{$port} database={$database} username={$username}");
         
         $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
         
@@ -32,14 +25,11 @@ function getDbConnection() {
                 PDO::ATTR_TIMEOUT => 10, // Longer timeout for Cloudron
             ]);
             
-            error_log("Database connection successful!");
-            
             // Initialize database schema if needed
             initializeDatabase($connection);
             
         } catch (PDOException $e) {
             error_log("Database connection failed: " . $e->getMessage());
-            error_log("DSN used: " . $dsn);
             
             // For health checks and CLI, return null rather than throwing
             if (php_sapi_name() === 'cli' || 
@@ -156,6 +146,32 @@ function initializeDatabase($db) {
             )
         ");
         
+        // Create custom environment variables table
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS custom_env_vars (
+                id SERIAL PRIMARY KEY,
+                var_key VARCHAR(255) UNIQUE NOT NULL,
+                var_value TEXT NOT NULL,
+                description TEXT,
+                is_sensitive BOOLEAN DEFAULT false,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+        
+        // Create activity log table
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+                action VARCHAR(100) NOT NULL,
+                description TEXT,
+                ip_address INET,
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+        
         // Insert default settings if they don't exist
         $defaultSettings = [
             'app_name' => 'PHP Git App Manager',
@@ -239,6 +255,72 @@ function getAllSchemas($db) {
     } catch (PDOException $e) {
         error_log("Failed to get schemas: " . $e->getMessage());
         return [];
+    }
+}
+
+function getCustomEnvVars($db) {
+    try {
+        $stmt = $db->query("SELECT * FROM custom_env_vars ORDER BY var_key");
+        return $stmt->fetchAll();
+    } catch (PDOException $e) {
+        error_log("Failed to get custom env vars: " . $e->getMessage());
+        return [];
+    }
+}
+
+function addCustomEnvVar($db, $key, $value, $description = null, $isSensitive = false) {
+    try {
+        $stmt = $db->prepare("
+            INSERT INTO custom_env_vars (var_key, var_value, description, is_sensitive) 
+            VALUES (?, ?, ?, ?)
+        ");
+        return $stmt->execute([$key, $value, $description, $isSensitive]);
+    } catch (PDOException $e) {
+        error_log("Failed to add custom env var: " . $e->getMessage());
+        return false;
+    }
+}
+
+function updateCustomEnvVar($db, $id, $key, $value, $description = null, $isSensitive = false) {
+    try {
+        $stmt = $db->prepare("
+            UPDATE custom_env_vars 
+            SET var_key = ?, var_value = ?, description = ?, is_sensitive = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        ");
+        return $stmt->execute([$key, $value, $description, $isSensitive, $id]);
+    } catch (PDOException $e) {
+        error_log("Failed to update custom env var: " . $e->getMessage());
+        return false;
+    }
+}
+
+function deleteCustomEnvVar($db, $id) {
+    try {
+        $stmt = $db->prepare("DELETE FROM custom_env_vars WHERE id = ?");
+        return $stmt->execute([$id]);
+    } catch (PDOException $e) {
+        error_log("Failed to delete custom env var: " . $e->getMessage());
+        return false;
+    }
+}
+
+function logActivity($db, $action, $description = '', $userId = null) {
+    try {
+        $stmt = $db->prepare("
+            INSERT INTO activity_log (user_id, action, description, ip_address, user_agent) 
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        return $stmt->execute([
+            $userId,
+            $action,
+            $description,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            $_SERVER['HTTP_USER_AGENT'] ?? null
+        ]);
+    } catch (PDOException $e) {
+        error_log("Failed to log activity: " . $e->getMessage());
+        return false;
     }
 }
 ?> 

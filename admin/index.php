@@ -187,6 +187,9 @@ switch ($action) {
     case 'settings':
         showSettings();
         break;
+    case 'debug':
+        showDebug();
+        break;
     case 'deploy':
         handleDeploy();
         break;
@@ -475,6 +478,14 @@ function showSettings() {
     
     include __DIR__ . '/templates/header.php';
     include __DIR__ . '/templates/settings.php';
+    include __DIR__ . '/templates/footer.php';
+}
+
+function showDebug() {
+    global $db;
+    
+    include __DIR__ . '/templates/header.php';
+    include __DIR__ . '/templates/debug.php';
     include __DIR__ . '/templates/footer.php';
 }
 

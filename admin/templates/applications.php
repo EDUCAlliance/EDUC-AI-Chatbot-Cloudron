@@ -96,6 +96,9 @@
     <?php endif; ?>
 </div>
 
+<!-- Flash Messages Container -->
+<div id="flash-messages" class="flash-messages"></div>
+
 <!-- Create/Edit Application Modal -->
 <div id="app-modal" class="modal" style="display: none;">
     <div class="modal-content">
@@ -130,14 +133,22 @@
             
             <div class="form-group">
                 <label for="app-branch">Branch</label>
-                <select id="app-branch" name="branch">
-                    <option value="main">main</option>
-                    <option value="master">master</option>
-                    <option value="develop">develop</option>
-                    <option value="staging">staging</option>
-                    <option value="production">production</option>
-                </select>
-                <small>Git branch to deploy from</small>
+                <div class="branch-input-container">
+                    <input type="text" id="app-branch" name="branch" value="main" 
+                           placeholder="Enter branch name" list="branch-suggestions">
+                    <datalist id="branch-suggestions">
+                        <option value="main">
+                        <option value="master">
+                        <option value="develop">
+                        <option value="staging">
+                        <option value="production">
+                        <option value="dev">
+                        <option value="feature">
+                        <option value="release">
+                        <option value="hotfix">
+                    </datalist>
+                </div>
+                <small>Git branch to deploy from. You can type any custom branch name or select from common suggestions.</small>
             </div>
             
             <div class="form-group">

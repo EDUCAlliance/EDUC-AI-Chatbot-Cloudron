@@ -8,6 +8,12 @@ window.AdminConfig = window.AdminConfig || {};
 
 // Initialize admin panel
 function initializeAdminPanel() {
+    // Get CSRF token from meta tag
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfMeta) {
+        window.AdminConfig.csrfToken = csrfMeta.getAttribute('content');
+    }
+    
     // Set up CSRF token for all AJAX requests
     if (window.AdminConfig.csrfToken) {
         setupCSRFToken();

@@ -217,6 +217,33 @@
     margin-top: 0.25rem;
 }
 
+/* Branch Input Styling */
+.branch-input-container {
+    position: relative;
+}
+
+.branch-input-container input[type="text"] {
+    width: 100%;
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.75rem;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.branch-input-container input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.branch-input-container input[type="text"]::-webkit-calendar-picker-indicator {
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
 /* Dashboard */
 .dashboard-header {
     margin-bottom: 2rem;

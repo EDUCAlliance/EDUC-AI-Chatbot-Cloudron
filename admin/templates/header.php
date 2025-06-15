@@ -38,6 +38,9 @@ if (!defined('ADMIN_SESSION_TIMEOUT')) {
                 <a href="/server-admin/?action=settings" class="nav-item <?= ($action ?? '') === 'settings' ? 'active' : '' ?>">
                     ⚙️ Settings
                 </a>
+                <a href="/server-admin/?action=debug" class="nav-item <?= ($action ?? '') === 'debug' ? 'active' : '' ?>">
+                    🔧 Debug
+                </a>
             </nav>
             
             <div class="header-right">
