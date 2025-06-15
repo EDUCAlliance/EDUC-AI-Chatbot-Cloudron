@@ -3,6 +3,32 @@
  * Application Configuration
  */
 
+// Ensure Cloudron environment variables are properly set
+function ensureCloudronEnvironment() {
+    // Set CLOUDRON_ENVIRONMENT if not set by Cloudron
+    if (!getenv('CLOUDRON_ENVIRONMENT')) {
+        putenv('CLOUDRON_ENVIRONMENT=production');
+        $_ENV['CLOUDRON_ENVIRONMENT'] = 'production';
+    }
+    
+    // Ensure other critical Cloudron variables are available
+    $cloudronVars = [
+        'CLOUDRON_POSTGRESQL_HOST' => 'postgresql',
+        'CLOUDRON_POSTGRESQL_PORT' => '5432',
+        'CLOUDRON_APP_DOMAIN' => $_SERVER['HTTP_HOST'] ?? 'localhost'
+    ];
+    
+    foreach ($cloudronVars as $var => $default) {
+        if (!getenv($var) && !isset($_ENV[$var])) {
+            putenv("{$var}={$default}");
+            $_ENV[$var] = $default;
+        }
+    }
+}
+
+// Initialize Cloudron environment
+ensureCloudronEnvironment();
+
 // Security settings
 define('ADMIN_SESSION_TIMEOUT', 3600); // 1 hour
 define('MAX_LOGIN_ATTEMPTS', 5);

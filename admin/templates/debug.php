@@ -1,6 +1,9 @@
 <?php 
 $pageTitle = 'System Debug';
 $action = 'debug'; // Ensure navigation highlighting works
+
+// Ensure Cloudron environment variables are properly loaded
+require_once __DIR__ . '/../../public/config/config.php';
 ?>
 
 <div class="debug-info">
@@ -127,11 +130,24 @@ $action = 'debug'; // Ensure navigation highlighting works
                     if (strpos($var, 'USERNAME') !== false || strpos($var, 'DATABASE') !== false) {
                         $value = substr($value, 0, 8) . '...[REDACTED]';
                     }
-                    echo "{$var}: {$value}\n";
+                    
+                    // Special handling for CLOUDRON_ENVIRONMENT
+                    if ($var === 'CLOUDRON_ENVIRONMENT') {
+                        $source = isset($_SERVER[$var]) ? '' : ' (auto-set)';
+                        echo "{$var}: {$value}{$source}\n";
+                    } else {
+                        echo "{$var}: {$value}\n";
+                    }
                 } else {
                     echo "<span class='status-error'>{$var}: NOT_SET</span>\n";
                 }
             }
+            
+            echo "\n=== Environment Status ===\n";
+            $envStatus = getenv('CLOUDRON_ENVIRONMENT') ?: 'unknown';
+            echo "Current Environment: <span class='status-success'>{$envStatus}</span>\n";
+            echo "Error Reporting: " . (error_reporting() ? 'ENABLED' : 'DISABLED') . "\n";
+            echo "Display Errors: " . (ini_get('display_errors') ? 'ON' : 'OFF') . "\n";
             
             echo "\n=== Sensitive Variables ===\n";
             echo "CLOUDRON_POSTGRESQL_PASSWORD: [REDACTED]\n";

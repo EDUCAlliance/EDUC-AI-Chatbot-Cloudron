@@ -469,12 +469,8 @@ function showDatabase() {
 function showSettings() {
     global $db;
     
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Handle settings update
-        handleSettingsUpdate($db);
-    }
-    
-    $settings = getSystemSettings($db);
+    // Don't handle POST here - let the template handle it
+    // This prevents double POST handling conflicts
     
     include __DIR__ . '/templates/header.php';
     include __DIR__ . '/templates/settings.php';
