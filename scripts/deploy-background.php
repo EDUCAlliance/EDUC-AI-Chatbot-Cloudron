@@ -106,7 +106,14 @@ try {
         
         if ($composerPath) {
             appendLog($logFile, "Using composer at: {$composerPath}\n");
-            $composerCommand = "cd {$appDirectory} && {$composerPath} install --no-dev --optimize-autoloader --no-interaction 2>&1";
+            
+            // Set proper environment variables for Composer
+            $homeDir = "/tmp/composer_home";
+            if (!is_dir($homeDir)) {
+                mkdir($homeDir, 0755, true);
+            }
+            
+            $composerCommand = "cd {$appDirectory} && HOME={$homeDir} COMPOSER_HOME={$homeDir} {$composerPath} install --no-dev --optimize-autoloader --no-interaction 2>&1";
             $composerOutput = shell_exec($composerCommand);
             appendLog($logFile, "Composer output: {$composerOutput}\n");
             
@@ -115,16 +122,33 @@ try {
                 appendLog($logFile, "✅ Composer dependencies installed successfully\n");
             } else {
                 appendLog($logFile, "❌ Composer installation failed - vendor directory not created\n");
-                // Try alternative installation
-                $fallbackCommand = "cd {$appDirectory} && curl -sS https://getcomposer.org/installer | php && php composer.phar install --no-dev --optimize-autoloader --no-interaction 2>&1";
+                // Try alternative installation with proper HOME set
+                $fallbackCommand = "cd {$appDirectory} && HOME={$homeDir} COMPOSER_HOME={$homeDir} curl -sS https://getcomposer.org/installer | php && HOME={$homeDir} COMPOSER_HOME={$homeDir} php composer.phar install --no-dev --optimize-autoloader --no-interaction 2>&1";
                 $fallbackOutput = shell_exec($fallbackCommand);
                 appendLog($logFile, "Fallback composer output: {$fallbackOutput}\n");
+                
+                // Check again if vendor directory was created
+                if (is_dir("{$appDirectory}/vendor")) {
+                    appendLog($logFile, "✅ Composer dependencies installed successfully via fallback\n");
+                }
             }
         } else {
             appendLog($logFile, "❌ Composer not found, attempting to install...\n");
-            $installCommand = "cd {$appDirectory} && curl -sS https://getcomposer.org/installer | php && php composer.phar install --no-dev --optimize-autoloader --no-interaction 2>&1";
+            
+            // Set proper environment variables for fallback installation
+            $homeDir = "/tmp/composer_home";
+            if (!is_dir($homeDir)) {
+                mkdir($homeDir, 0755, true);
+            }
+            
+            $installCommand = "cd {$appDirectory} && HOME={$homeDir} COMPOSER_HOME={$homeDir} curl -sS https://getcomposer.org/installer | php && HOME={$homeDir} COMPOSER_HOME={$homeDir} php composer.phar install --no-dev --optimize-autoloader --no-interaction 2>&1";
             $installOutput = shell_exec($installCommand);
             appendLog($logFile, "Composer install output: {$installOutput}\n");
+            
+            // Check if vendor directory was created
+            if (is_dir("{$appDirectory}/vendor")) {
+                appendLog($logFile, "✅ Composer dependencies installed successfully\n");
+            }
         }
     }
     
