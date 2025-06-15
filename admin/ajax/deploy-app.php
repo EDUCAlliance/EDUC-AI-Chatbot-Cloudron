@@ -68,8 +68,38 @@ try {
     
     // Start background deployment process
     $deploymentScript = __DIR__ . '/../../scripts/deploy-background.php';
-    $command = "php {$deploymentScript} {$deploymentId} > /dev/null 2>&1 &";
-    exec($command);
+    $logFile = "/app/code/apps/{$app['directory']}/deployment.log";
+    
+    // Create app directory if it doesn't exist
+    $appDirectory = "/app/code/apps/{$app['directory']}";
+    if (!is_dir($appDirectory)) {
+        mkdir($appDirectory, 0755, true);
+    }
+    
+    // Find PHP binary path
+    $phpPaths = ['/usr/local/bin/php', '/usr/bin/php', 'php'];
+    $phpBinary = 'php'; // fallback
+    
+    foreach ($phpPaths as $path) {
+        if (file_exists($path)) {
+            $phpBinary = $path;
+            break;
+        }
+    }
+    
+    // Execute background script with proper logging
+    $command = "{$phpBinary} {$deploymentScript} {$deploymentId} >> {$logFile} 2>&1 &";
+    
+    // Log the command being executed for debugging
+    error_log("Executing deployment command: {$command}");
+    
+    exec($command, $output, $return_var);
+    
+    // Log execution result
+    if ($return_var !== 0) {
+        error_log("Failed to start background deployment. Return code: {$return_var}");
+        error_log("Output: " . implode("\n", $output));
+    }
     
     echo json_encode([
         'success' => true,

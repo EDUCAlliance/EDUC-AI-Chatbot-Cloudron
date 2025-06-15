@@ -61,7 +61,9 @@ try {
             'message' => 'No deployment found for this application',
             'deployment' => null,
             'log' => 'No deployment logs available.',
-            'logFile' => null
+            'logFile' => null,
+            'app_name' => $app['name'],
+            'status' => 'pending'
         ]);
         exit;
     }

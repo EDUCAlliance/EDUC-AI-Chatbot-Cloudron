@@ -497,17 +497,24 @@ function getDashboardStats($db) {
         $stmt = $db->query("SELECT COUNT(*) as count FROM applications");
         $stats['total_apps'] = $stmt->fetch()['count'];
         
-        $stmt = $db->query("SELECT COUNT(*) as count FROM applications WHERE deployed = true");
+        $stmt = $db->query("SELECT COUNT(*) as count FROM applications WHERE deployed = true AND status = 'active'");
         $stats['deployed_apps'] = $stmt->fetch()['count'];
         
-        $stmt = $db->query("SELECT COUNT(*) as count FROM deployments WHERE status = 'completed' AND created_at > NOW() - INTERVAL '24 hours'");
+        $stmt = $db->query("SELECT COUNT(*) as count FROM deployments WHERE status = 'completed' AND started_at > NOW() - INTERVAL '24 hours'");
         $stats['recent_deployments'] = $stmt->fetch()['count'];
         
-        $stmt = $db->query("SELECT COUNT(*) as count FROM embeddings");
-        $stats['embeddings'] = $stmt->fetch()['count'];
+        // Check if embeddings table exists before querying
+        $stmt = $db->query("SELECT COUNT(*) as count FROM information_schema.tables WHERE table_name = 'embeddings'");
+        if ($stmt->fetch()['count'] > 0) {
+            $stmt = $db->query("SELECT COUNT(*) as count FROM embeddings");
+            $stats['embeddings'] = $stmt->fetch()['count'];
+        } else {
+            $stats['embeddings'] = 0;
+        }
         
         return $stats;
     } catch (PDOException $e) {
+        error_log("Dashboard stats error: " . $e->getMessage());
         return ['total_apps' => 0, 'deployed_apps' => 0, 'recent_deployments' => 0, 'embeddings' => 0];
     }
 }

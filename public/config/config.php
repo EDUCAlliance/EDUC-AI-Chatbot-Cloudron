@@ -108,7 +108,7 @@ function checkRateLimit($db, $action, $limit = 10, $window = 300) {
             FROM activity_log 
             WHERE ip_address = ? 
             AND action = ? 
-            AND created_at > NOW() - INTERVAL ? SECOND
+            AND created_at > NOW() - ? * INTERVAL '1 SECOND'
         ");
         $stmt->execute([$_SERVER['REMOTE_ADDR'] ?? 'unknown', $action, $window]);
         $result = $stmt->fetch();
