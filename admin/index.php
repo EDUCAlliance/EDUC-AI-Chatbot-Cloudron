@@ -9,9 +9,145 @@ require_once __DIR__ . '/../public/config/config.php';
 
 startSecureSession();
 
-// Initialize database and activity log
-$db = getDbConnection();
-initializeActivityLog($db);
+// Initialize database and activity log with error handling
+$db = null;
+$dbError = null;
+
+try {
+    $db = getDbConnection();
+    initializeActivityLog($db);
+} catch (Exception $e) {
+    $dbError = $e->getMessage();
+    error_log("Admin panel database connection failed: " . $dbError);
+    
+    // Show error page for admin panel
+    echo "<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Error - Admin Panel</title>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <link rel='stylesheet' href='/assets/css/admin.css'>
+    <style>
+        .error-container { 
+            max-width: 700px; 
+            margin: 50px auto; 
+            padding: 30px; 
+            background: white; 
+            border-radius: 8px; 
+            border-left: 5px solid #dc3545; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .error-title { color: #dc3545; margin-bottom: 20px; display: flex; align-items: center; }
+        .error-icon { font-size: 24px; margin-right: 10px; }
+        .error-message { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 4px; 
+            font-family: monospace; 
+            margin: 15px 0; 
+            word-break: break-all;
+            border: 1px solid #e9ecef;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .status-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid #007bff;
+        }
+        .btn-group { margin-top: 20px; }
+        .btn { 
+            display: inline-block; 
+            padding: 10px 20px; 
+            background: #007bff; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            margin-right: 10px; 
+            margin-bottom: 10px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #545b62; }
+    </style>
+</head>
+<body>
+    <div class='error-container'>
+        <h1 class='error-title'>
+            <span class='error-icon'>🛠️</span>
+            Admin Panel - Database Connection Error
+        </h1>
+        <p><strong>The admin panel cannot connect to the PostgreSQL database.</strong></p>
+        
+        <div class='error-message'>
+            <strong>Error Details:</strong><br>
+            " . htmlspecialchars($dbError) . "
+        </div>
+        
+        <div class='status-grid'>
+            <div class='status-item'>
+                <h4>🕐 Most Likely Cause</h4>
+                <p>PostgreSQL addon is still starting up after deployment</p>
+            </div>
+            <div class='status-item'>
+                <h4>⏱️ Expected Wait Time</h4>
+                <p>2-3 minutes for full initialization</p>
+            </div>
+            <div class='status-item'>
+                <h4>🔄 Auto-Retry</h4>
+                <p>This page refreshes automatically every 30 seconds</p>
+            </div>
+        </div>
+        
+        <h3>🔍 Troubleshooting Steps:</h3>
+        <ol>
+            <li><strong>Wait 2-3 minutes</strong> for PostgreSQL addon to fully initialize</li>
+            <li>Refresh this page to retry the connection</li>
+            <li>Check health status and debug information</li>
+            <li>If problem persists >5 minutes, check Cloudron logs</li>
+        </ol>
+        
+        <div class='btn-group'>
+            <a href='javascript:location.reload()' class='btn'>🔄 Retry Connection</a>
+            <a href='/health.php' class='btn btn-secondary'>❤️ Health Check</a>
+            <a href='/debug.php' class='btn btn-secondary'>🔧 Debug Info</a>
+            <a href='/' class='btn btn-secondary'>🏠 Main App</a>
+        </div>
+        
+        <script>
+            // Auto-refresh after 30 seconds
+            let countdown = 30;
+            const statusElement = document.createElement('div');
+            statusElement.style.textAlign = 'center';
+            statusElement.style.marginTop = '20px';
+            statusElement.style.padding = '10px';
+            statusElement.style.background = '#e9ecef';
+            statusElement.style.borderRadius = '4px';
+            document.querySelector('.error-container').appendChild(statusElement);
+            
+            const updateCountdown = () => {
+                statusElement.innerHTML = `⏰ Auto-refresh in <strong>${countdown}</strong> seconds...`;
+                countdown--;
+                if (countdown >= 0) {
+                    setTimeout(updateCountdown, 1000);
+                } else {
+                    statusElement.innerHTML = '🔄 Refreshing now...';
+                    location.reload();
+                }
+            };
+            updateCountdown();
+        </script>
+    </div>
+</body>
+</html>";
+    exit;
+}
 
 // Check if this is the initial setup
 $isInitialSetup = !hasAdminUsers($db);

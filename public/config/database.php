@@ -8,11 +8,19 @@ function getDbConnection() {
     static $connection = null;
     
     if ($connection === null) {
-        $host = $_ENV['POSTGRESQL_HOST'] ?? 'localhost';
-        $port = $_ENV['POSTGRESQL_PORT'] ?? '5432';
-        $database = $_ENV['POSTGRESQL_DATABASE'] ?? 'app';
-        $username = $_ENV['POSTGRESQL_USERNAME'] ?? 'postgres';
-        $password = $_ENV['POSTGRESQL_PASSWORD'] ?? '';
+        // Debug: Log environment variables for troubleshooting
+        error_log("Database connection attempt - Environment variables check:");
+        error_log("CLOUDRON_POSTGRESQL_HOST: " . ($_ENV['CLOUDRON_POSTGRESQL_HOST'] ?? 'NOT_SET'));
+        error_log("CLOUDRON_POSTGRESQL_PORT: " . ($_ENV['CLOUDRON_POSTGRESQL_PORT'] ?? 'NOT_SET'));
+        
+        // Use Cloudron environment variables with better fallback handling
+        $host = getenv('CLOUDRON_POSTGRESQL_HOST') ?: $_ENV['CLOUDRON_POSTGRESQL_HOST'] ?? $_ENV['POSTGRESQL_HOST'] ?? 'postgresql';
+        $port = getenv('CLOUDRON_POSTGRESQL_PORT') ?: $_ENV['CLOUDRON_POSTGRESQL_PORT'] ?? $_ENV['POSTGRESQL_PORT'] ?? '5432';
+        $database = getenv('CLOUDRON_POSTGRESQL_DATABASE') ?: $_ENV['CLOUDRON_POSTGRESQL_DATABASE'] ?? $_ENV['POSTGRESQL_DATABASE'] ?? 'app';
+        $username = getenv('CLOUDRON_POSTGRESQL_USERNAME') ?: $_ENV['CLOUDRON_POSTGRESQL_USERNAME'] ?? $_ENV['POSTGRESQL_USERNAME'] ?? 'postgres';
+        $password = getenv('CLOUDRON_POSTGRESQL_PASSWORD') ?: $_ENV['CLOUDRON_POSTGRESQL_PASSWORD'] ?? $_ENV['POSTGRESQL_PASSWORD'] ?? '';
+        
+        error_log("Attempting connection to: {$host}:{$port} database={$database} username={$username}");
         
         $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
         
@@ -21,14 +29,26 @@ function getDbConnection() {
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_TIMEOUT => 10, // Longer timeout for Cloudron
             ]);
+            
+            error_log("Database connection successful!");
             
             // Initialize database schema if needed
             initializeDatabase($connection);
             
         } catch (PDOException $e) {
             error_log("Database connection failed: " . $e->getMessage());
-            throw new Exception("Database connection failed");
+            error_log("DSN used: " . $dsn);
+            
+            // For health checks and CLI, return null rather than throwing
+            if (php_sapi_name() === 'cli' || 
+                strpos($_SERVER['REQUEST_URI'] ?? '', 'health') !== false ||
+                strpos($_SERVER['SCRIPT_NAME'] ?? '', 'health') !== false) {
+                return null;
+            }
+            
+            throw new Exception("Database connection failed: " . $e->getMessage());
         }
     }
     

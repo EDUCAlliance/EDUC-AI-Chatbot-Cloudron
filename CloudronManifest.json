@@ -1,8 +1,8 @@
 {
   "title": "PHP Git App Manager",
   "version": "1.0.0",
-  "healthCheckPath": "/",
-  "httpPort": 3000,
+  "healthCheckPath": "/health.php",
+  "httpPort": 8000,
   "addons": {
     "localstorage": {},
     "postgresql": {}
