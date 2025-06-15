@@ -1,17 +1,27 @@
 {
-  "title": "App title",
-  "version": "0.1.0",
+  "title": "PHP Git App Manager",
+  "version": "1.0.0",
   "healthCheckPath": "/",
   "httpPort": 3000,
   "addons": {
     "localstorage": {},
-    "mysql": {}
+    "postgresql": {}
   },
   "manifestVersion": 2,
   "icon": "",
+  "configurePath": "/server-admin/",
   "runtimeDirs": [
     "/app/code/node_modules",
     "/app/code/public",
-    "/app/code"
-  ]
+    "/app/code",
+    "/app/code/apps",
+    "/app/code/admin",
+    "/app/code/assets"
+  ],
+  "memoryLimit": 524288000,
+  "description": "A comprehensive admin panel for managing PHP Git applications with PostgreSQL and vector embeddings support",
+  "tagline": "Manage PHP Git apps with advanced database features",
+  "author": "EDUC Alliance",
+  "tags": ["git", "admin", "database", "php"],
+  "postInstallMessage": "Access the admin panel at /server-admin/ to configure your first Git repository. On first visit, you'll be asked to set an initial password."
 }
