@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $key = sanitizeInput($_POST['env_key'] ?? '');
                     $value = $_POST['env_value'] ?? '';
                     $description = sanitizeInput($_POST['env_description'] ?? '');
-                    $isSensitive = isset($_POST['env_sensitive']);
+                    $isSensitive = !empty($_POST['env_sensitive']) ? true : false;
                     
                     if (!empty($key) && !empty($value)) {
                         // Validate key format (must be valid environment variable name)
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $key = sanitizeInput($_POST['env_key'] ?? '');
                     $value = $_POST['env_value'] ?? '';
                     $description = sanitizeInput($_POST['env_description'] ?? '');
-                    $isSensitive = isset($_POST['env_sensitive']);
+                    $isSensitive = !empty($_POST['env_sensitive']) ? true : false;
                     
                     if ($id > 0 && !empty($key) && !empty($value)) {
                         if (preg_match('/^[A-Z][A-Z0-9_]*$/i', $key)) {

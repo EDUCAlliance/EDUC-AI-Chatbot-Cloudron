@@ -55,8 +55,8 @@ try {
     
     // Create deployment record
     $stmt = $db->prepare("
-        INSERT INTO deployments (application_id, status, started_at, log, created_at)
-        VALUES (?, 'pending', CURRENT_TIMESTAMP, 'Deployment initiated...\n', CURRENT_TIMESTAMP)
+        INSERT INTO deployments (application_id, status, started_at, log)
+        VALUES (?, 'pending', CURRENT_TIMESTAMP, 'Deployment initiated...\n')
         RETURNING id
     ");
     $stmt->execute([$appId]);

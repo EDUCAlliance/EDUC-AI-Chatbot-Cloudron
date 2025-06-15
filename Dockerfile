@@ -10,6 +10,13 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Install Node.js and npm for frontend dependencies
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
 ENV GIT_CONFIG_GLOBAL=/app/code/public/.gitconfig
 
 RUN mkdir -p /app/data /app/code/apps /app/code/admin /app/code/assets

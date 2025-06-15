@@ -75,6 +75,11 @@
                             </a>
                         <?php endif; ?>
                         
+                        <button class="btn btn-info btn-sm" 
+                                onclick="viewDeploymentLogs(<?= $app['id'] ?>)">
+                            📋 View Logs
+                        </button>
+                        
                         <button class="btn btn-secondary btn-sm" 
                                 onclick="deployApp(<?= $app['id'] ?>)">
                             🔄 Redeploy
@@ -278,6 +283,77 @@ function saveApp() {
     });
 }
 
+function viewDeploymentLogs(appId) {
+    document.getElementById('deploy-modal').style.display = 'flex';
+    
+    // Reset deployment status for viewing logs
+    const steps = document.querySelectorAll('.deploy-step');
+    steps.forEach(step => {
+        step.classList.remove('active', 'completed', 'error');
+    });
+    
+    // Set modal title for viewing logs
+    document.querySelector('#deploy-modal .modal-header h2').textContent = '📋 Deployment Logs';
+    
+    document.getElementById('deploy-log-content').textContent = 'Loading deployment logs...\n';
+    
+    // Fetch deployment logs
+    fetch('/server-admin/ajax/view-deployment-logs.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            app_id: appId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update deployment steps based on status
+            if (data.deployment) {
+                updateStepsForStatus(data.deployment.status);
+            }
+            
+            // Show the logs
+            document.getElementById('deploy-log-content').textContent = data.log;
+            
+            // Update modal title with app name and status
+            const statusIcon = data.deployment?.status === 'completed' ? '✅' : 
+                              data.deployment?.status === 'failed' ? '❌' : 
+                              data.deployment?.status === 'running' ? '🔄' : '📋';
+            document.querySelector('#deploy-modal .modal-header h2').textContent = 
+                `${statusIcon} Deployment Logs - ${data.app_name}`;
+        } else {
+            document.getElementById('deploy-log-content').textContent = 
+                'Error loading logs: ' + data.message;
+        }
+    })
+    .catch(error => {
+        document.getElementById('deploy-log-content').textContent = 
+            'Failed to load deployment logs: ' + error.message;
+    });
+}
+
+function updateStepsForStatus(status) {
+    const steps = document.querySelectorAll('.deploy-step');
+    
+    switch (status) {
+        case 'completed':
+            steps.forEach(step => step.classList.add('completed'));
+            break;
+        case 'failed':
+            steps[0].classList.add('error');
+            break;
+        case 'running':
+            steps[0].classList.add('completed');
+            steps[1].classList.add('active');
+            break;
+        default:
+            steps[0].classList.add('active');
+    }
+}
+
 function deployApp(appId) {
     document.getElementById('deploy-modal').style.display = 'flex';
     
@@ -287,6 +363,9 @@ function deployApp(appId) {
         step.classList.remove('active', 'completed', 'error');
         if (index === 0) step.classList.add('active');
     });
+    
+    // Reset modal title
+    document.querySelector('#deploy-modal .modal-header h2').textContent = '🚀 Deployment Status';
     
     document.getElementById('deploy-log-content').textContent = 'Starting deployment...\n';
     

@@ -1028,6 +1028,16 @@
     color: white;
 }
 
+.btn-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+    color: white;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .admin-container {

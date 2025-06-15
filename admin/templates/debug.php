@@ -1,4 +1,7 @@
-<?php $pageTitle = 'System Debug'; ?>
+<?php 
+$pageTitle = 'System Debug';
+$action = 'debug'; // Ensure navigation highlighting works
+?>
 
 <div class="debug-info">
     <div class="page-header">
@@ -29,14 +32,14 @@
             <pre class="debug-output"><?php
             try {
                 require_once __DIR__ . '/../../public/config/database.php';
-                $db = getDbConnection();
+                $debugDb = getDbConnection();
                 
-                if ($db) {
+                if ($debugDb) {
                     echo "<span class='status-success'>✓ Database connection successful</span>\n";
                     
                     // Test vector extension
                     try {
-                        $stmt = $db->query("SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') as has_vector");
+                        $stmt = $debugDb->query("SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') as has_vector");
                         $result = $stmt->fetch();
                         if ($result['has_vector']) {
                             echo "<span class='status-success'>✓ pgvector extension available</span>\n";
@@ -49,7 +52,7 @@
                     
                     // Check table count
                     try {
-                        $stmt = $db->query("SELECT COUNT(*) as table_count FROM pg_tables WHERE schemaname = 'public'");
+                        $stmt = $debugDb->query("SELECT COUNT(*) as table_count FROM pg_tables WHERE schemaname = 'public'");
                         $result = $stmt->fetch();
                         echo "Tables in public schema: " . $result['table_count'] . "\n";
                     } catch (Exception $e) {
@@ -147,10 +150,28 @@
                 $stats['memory_usage'] = memory_get_usage(true);
                 $stats['memory_peak'] = memory_get_peak_usage(true);
                 
-                // Disk usage for apps directory
+                // Disk usage for apps directory  
                 $appsDir = '/app/code/apps';
                 if (is_dir($appsDir)) {
-                    $stats['apps_disk_usage'] = folderSize($appsDir);
+                    $stats['apps_disk_usage'] = getDirSize($appsDir);
+                }
+                
+                function getDirSize($dir) {
+                    $size = 0;
+                    if (is_dir($dir)) {
+                        $objects = scandir($dir);
+                        foreach ($objects as $object) {
+                            if ($object != "." && $object != "..") {
+                                $path = $dir . "/" . $object;
+                                if (filetype($path) == "dir") {
+                                    $size += getDirSize($path);
+                                } else {
+                                    $size += filesize($path);
+                                }
+                            }
+                        }
+                    }
+                    return $size;
                 }
                 
                 echo "Memory Usage: " . formatBytes($stats['memory_usage']) . "\n";
@@ -174,31 +195,7 @@
                 echo "<span class='status-error'>Error getting stats: " . htmlspecialchars($e->getMessage()) . "</span>\n";
             }
             
-            function folderSize($dir) {
-                $size = 0;
-                if (is_dir($dir)) {
-                    $objects = scandir($dir);
-                    foreach ($objects as $object) {
-                        if ($object != "." && $object != "..") {
-                            $path = $dir . "/" . $object;
-                            if (filetype($path) == "dir") {
-                                $size += folderSize($path);
-                            } else {
-                                $size += filesize($path);
-                            }
-                        }
-                    }
-                }
-                return $size;
-            }
-            
-            function formatBytes($size, $precision = 2) {
-                $units = array('B', 'KB', 'MB', 'GB', 'TB');
-                for ($i = 0; $size > 1024 && $i < count($units) - 1; $i++) {
-                    $size /= 1024;
-                }
-                return round($size, $precision) . ' ' . $units[$i];
-            }
+            // Helper functions moved to avoid conflicts - using global functions
             ?></pre>
         </div>
     </div>
@@ -238,4 +235,15 @@
 .status-success { color: #00ff00; }
 .status-warning { color: #ffaa00; }
 .status-error { color: #ff0000; }
+.alert { 
+    padding: 15px; 
+    margin-bottom: 20px; 
+    border: 1px solid transparent; 
+    border-radius: 4px; 
+}
+.alert-warning { 
+    color: #856404; 
+    background-color: #fff3cd; 
+    border-color: #ffeaa7; 
+}
 </style> 
