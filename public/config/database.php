@@ -305,22 +305,5 @@ function deleteCustomEnvVar($db, $id) {
     }
 }
 
-function logActivity($db, $action, $description = '', $userId = null) {
-    try {
-        $stmt = $db->prepare("
-            INSERT INTO activity_log (user_id, action, description, ip_address, user_agent) 
-            VALUES (?, ?, ?, ?, ?)
-        ");
-        return $stmt->execute([
-            $userId,
-            $action,
-            $description,
-            $_SERVER['REMOTE_ADDR'] ?? null,
-            $_SERVER['HTTP_USER_AGENT'] ?? null
-        ]);
-    } catch (PDOException $e) {
-        error_log("Failed to log activity: " . $e->getMessage());
-        return false;
-    }
-}
+
 ?> 

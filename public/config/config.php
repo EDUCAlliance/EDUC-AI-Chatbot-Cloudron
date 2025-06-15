@@ -86,7 +86,7 @@ function isValidAppDirectory($directory) {
 function logActivity($db, $action, $details = '', $userId = null) {
     try {
         $stmt = $db->prepare("
-            INSERT INTO activity_log (user_id, action, details, ip_address, user_agent, created_at) 
+            INSERT INTO activity_log (user_id, action, description, ip_address, user_agent, created_at) 
             VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ");
         $stmt->execute([
@@ -149,7 +149,7 @@ function initializeActivityLog($db) {
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER,
                 action VARCHAR(255) NOT NULL,
-                details TEXT,
+                description TEXT,
                 ip_address INET,
                 user_agent TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
