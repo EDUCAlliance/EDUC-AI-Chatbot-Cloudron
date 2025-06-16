@@ -258,6 +258,19 @@ function getAllSchemas($db) {
     }
 }
 
+function convertToPgBoolean($value) {
+    // PostgreSQL boolean conversion - explicit string values
+    // See: https://www.postgresql.org/docs/current/datatype-boolean.html
+    // PostgreSQL accepts: true, yes, on, 1 for TRUE
+    // PostgreSQL accepts: false, no, off, 0 for FALSE
+    
+    if ($value === true || $value === 'true' || $value === 1 || $value === '1' || $value === 'yes' || $value === 'on') {
+        return 'true';
+    } else {
+        return 'false';
+    }
+}
+
 function getCustomEnvVars($db) {
     try {
         $stmt = $db->query("SELECT * FROM custom_env_vars ORDER BY var_key");
@@ -270,27 +283,71 @@ function getCustomEnvVars($db) {
 
 function addCustomEnvVar($db, $key, $value, $description = null, $isSensitive = false) {
     try {
+        // CRITICAL FIX: PostgreSQL requires explicit string boolean conversion
+        // See: https://www.postgresql.org/docs/current/datatype-boolean.html
+        $pgBoolValue = convertToPgBoolean($isSensitive);
+        
+        error_log("DEBUG addCustomEnvVar: key=$key, description='$description', isSensitive_raw=" . var_export($isSensitive, true) . ", pgBoolValue='$pgBoolValue'");
+        
         $stmt = $db->prepare("
             INSERT INTO custom_env_vars (var_key, var_value, description, is_sensitive) 
             VALUES (?, ?, ?, ?)
         ");
-        return $stmt->execute([$key, $value, $description, $isSensitive]);
+        
+        // Use explicit parameter binding with correct types
+        $stmt->bindParam(1, $key, PDO::PARAM_STR);
+        $stmt->bindParam(2, $value, PDO::PARAM_STR);
+        $stmt->bindParam(3, $description, PDO::PARAM_STR);
+        $stmt->bindParam(4, $pgBoolValue, PDO::PARAM_STR); // Force string for PostgreSQL boolean
+        
+        $success = $stmt->execute();
+        
+        if (!$success) {
+            error_log("Failed to add custom env var - execute returned false");
+            $errorInfo = $stmt->errorInfo();
+            error_log("PDO Error Info: " . print_r($errorInfo, true));
+        }
+        
+        return $success;
     } catch (PDOException $e) {
         error_log("Failed to add custom env var: " . $e->getMessage());
+        error_log("Parameters: key=$key, value=[REDACTED], description='$description', pgBoolValue='$pgBoolValue'");
         return false;
     }
 }
 
 function updateCustomEnvVar($db, $id, $key, $value, $description = null, $isSensitive = false) {
     try {
+        // CRITICAL FIX: PostgreSQL requires explicit string boolean conversion
+        $pgBoolValue = convertToPgBoolean($isSensitive);
+        
+        error_log("DEBUG updateCustomEnvVar: id=$id, key=$key, description='$description', isSensitive_raw=" . var_export($isSensitive, true) . ", pgBoolValue='$pgBoolValue'");
+        
         $stmt = $db->prepare("
             UPDATE custom_env_vars 
             SET var_key = ?, var_value = ?, description = ?, is_sensitive = ?, updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
         ");
-        return $stmt->execute([$key, $value, $description, $isSensitive, $id]);
+        
+        // Use explicit parameter binding with correct types
+        $stmt->bindParam(1, $key, PDO::PARAM_STR);
+        $stmt->bindParam(2, $value, PDO::PARAM_STR);
+        $stmt->bindParam(3, $description, PDO::PARAM_STR);
+        $stmt->bindParam(4, $pgBoolValue, PDO::PARAM_STR); // Force string for PostgreSQL boolean
+        $stmt->bindParam(5, $id, PDO::PARAM_INT);
+        
+        $success = $stmt->execute();
+        
+        if (!$success) {
+            error_log("Failed to update custom env var - execute returned false");
+            $errorInfo = $stmt->errorInfo();
+            error_log("PDO Error Info: " . print_r($errorInfo, true));
+        }
+        
+        return $success;
     } catch (PDOException $e) {
         error_log("Failed to update custom env var: " . $e->getMessage());
+        error_log("Parameters: id=$id, key=$key, value=[REDACTED], description='$description', pgBoolValue='$pgBoolValue'");
         return false;
     }
 }

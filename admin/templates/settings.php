@@ -15,7 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $key = sanitizeInput($_POST['env_key'] ?? '');
                     $value = $_POST['env_value'] ?? '';
                     $description = sanitizeInput($_POST['env_description'] ?? '');
-                    $isSensitive = !empty($_POST['env_sensitive']) ? true : false;
+                    // Explicit boolean conversion to prevent PostgreSQL errors
+                    $isSensitive = isset($_POST['env_sensitive']) && $_POST['env_sensitive'] !== '' && $_POST['env_sensitive'] !== '0' ? true : false;
                     
                     if (!empty($key) && !empty($value)) {
                         // Validate key format (must be valid environment variable name)
@@ -39,7 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $key = sanitizeInput($_POST['env_key'] ?? '');
                     $value = $_POST['env_value'] ?? '';
                     $description = sanitizeInput($_POST['env_description'] ?? '');
-                    $isSensitive = !empty($_POST['env_sensitive']) ? true : false;
+                    // Explicit boolean conversion to prevent PostgreSQL errors
+                    $isSensitive = isset($_POST['env_sensitive']) && $_POST['env_sensitive'] !== '' && $_POST['env_sensitive'] !== '0' ? true : false;
                     
                     if ($id > 0 && !empty($key) && !empty($value)) {
                         if (preg_match('/^[A-Z][A-Z0-9_]*$/i', $key)) {

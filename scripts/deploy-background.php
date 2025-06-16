@@ -204,8 +204,32 @@ try {
     $stmt = $db->prepare("UPDATE applications SET deployed = true, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
     $stmt->execute([$deployment['application_id']]);
     
+    // FINAL ULTRA DEEP VERIFICATION
+    appendLog($logFile, "\n🔍 FINAL VERIFICATION - Complete directory listing:\n");
+    $allFiles = scandir($appDirectory);
+    foreach ($allFiles as $file) {
+        if ($file === '.' || $file === '..') continue;
+        $fullPath = $appDirectory . '/' . $file;
+        $isDir = is_dir($fullPath);
+        $size = $isDir ? 0 : filesize($fullPath);
+        $perms = substr(sprintf('%o', fileperms($fullPath)), -4);
+        $type = $isDir ? 'DIR' : 'FILE';
+        appendLog($logFile, "📄 {$type}: {$file} ({$size} bytes, perms: {$perms})\n");
+    }
+    
+    // Specific check for our critical files
+    $criticalFiles = ['custom-env.php', 'auto-include.php', '.htaccess', 'index.php'];
+    appendLog($logFile, "\n🔍 Critical files check:\n");
+    foreach ($criticalFiles as $file) {
+        $fullPath = $appDirectory . '/' . $file;
+        $exists = file_exists($fullPath);
+        $readable = $exists ? is_readable($fullPath) : false;
+        $status = $exists ? ($readable ? 'EXISTS+READABLE' : 'EXISTS+UNREADABLE') : 'MISSING';
+        appendLog($logFile, "📋 {$file}: {$status}\n");
+    }
+    
     // Complete deployment
-    appendLog($logFile, "Deployment completed successfully at " . date('Y-m-d H:i:s') . "\n");
+    appendLog($logFile, "\nDeployment completed successfully at " . date('Y-m-d H:i:s') . "\n");
     updateDeploymentStatus($db, $deploymentId, 'completed', file_get_contents($logFile));
     
     error_log("Deployment {$deploymentId} completed successfully");
@@ -243,12 +267,16 @@ function appendLog($logFile, $message) {
 
 function createCustomEnvFile($db, $appDirectory, $deployment, $logFile) {
     try {
+        appendLog($logFile, "Checking for custom environment variables...\n");
+        
         // Get custom environment variables from database
-        $stmt = $db->query("SELECT var_key, var_value FROM custom_env_vars ORDER BY var_key");
+        $stmt = $db->query("SELECT var_key, var_value, is_sensitive FROM custom_env_vars ORDER BY var_key");
         $customEnvVars = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        appendLog($logFile, "Found " . count($customEnvVars) . " custom environment variables.\n");
+        
         if (empty($customEnvVars)) {
-            appendLog($logFile, "No custom environment variables defined.\n");
+            appendLog($logFile, "No custom environment variables defined, skipping custom-env.php creation.\n");
             return;
         }
         
@@ -264,20 +292,66 @@ function createCustomEnvFile($db, $appDirectory, $deployment, $logFile) {
         foreach ($customEnvVars as $envVar) {
             $key = $envVar['var_key'];
             $value = $envVar['var_value'];
+            $isSensitive = $envVar['is_sensitive'] ?? false;
+            
+            // Log variable being added (hide sensitive values)
+            $logValue = $isSensitive ? '[SENSITIVE]' : $value;
+            appendLog($logFile, "Adding environment variable: {$key} = {$logValue}\n");
             
             // Escape value for PHP string
             $escapedValue = addslashes($value);
             
             // Add to both $_ENV and putenv() for compatibility
-            $envContent .= "// {$key}\n";
+            $envContent .= "// {$key}" . ($isSensitive ? ' (sensitive)' : '') . "\n";
             $envContent .= "\$_ENV['{$key}'] = '{$escapedValue}';\n";
             $envContent .= "putenv('{$key}={$escapedValue}');\n\n";
         }
         
         $envContent .= "?>\n";
         
-        file_put_contents($envFile, $envContent);
-        appendLog($logFile, "Created custom environment file with " . count($customEnvVars) . " variables.\n");
+        // ULTRA DEEP FILE CREATION DEBUGGING
+        appendLog($logFile, "🔍 ULTRA DEBUG: About to create custom environment file\n");
+        appendLog($logFile, "📂 Target directory: {$appDirectory}\n");
+        appendLog($logFile, "📂 Directory exists: " . (is_dir($appDirectory) ? 'YES' : 'NO') . "\n");
+        appendLog($logFile, "📂 Directory writable: " . (is_writable($appDirectory) ? 'YES' : 'NO') . "\n");
+        appendLog($logFile, "📄 Target file: {$envFile}\n");
+        appendLog($logFile, "📄 File content length: " . strlen($envContent) . " bytes\n");
+        
+        // Write the custom environment file
+        $writeResult = file_put_contents($envFile, $envContent);
+        if ($writeResult === false) {
+            appendLog($logFile, "❌ Failed to write custom environment file: {$envFile}\n");
+            appendLog($logFile, "🔍 Last error: " . error_get_last()['message'] ?? 'No error details' . "\n");
+            throw new Exception("Failed to write custom environment file");
+        } else {
+            appendLog($logFile, "✅ file_put_contents returned: {$writeResult} bytes\n");
+            
+            // IMMEDIATE verification
+            if (file_exists($envFile)) {
+                $actualSize = filesize($envFile);
+                $actualPerms = substr(sprintf('%o', fileperms($envFile)), -4);
+                $actualOwner = fileowner($envFile);
+                $actualGroup = filegroup($envFile);
+                
+                appendLog($logFile, "✅ File verification: EXISTS\n");
+                appendLog($logFile, "📊 Actual size: {$actualSize} bytes\n");
+                appendLog($logFile, "🔐 Permissions: {$actualPerms}\n");
+                appendLog($logFile, "👤 Owner: {$actualOwner}, Group: {$actualGroup}\n");
+                appendLog($logFile, "📄 Readable: " . (is_readable($envFile) ? 'YES' : 'NO') . "\n");
+                
+                // Try to read it back
+                $readBack = file_get_contents($envFile);
+                if ($readBack === false) {
+                    appendLog($logFile, "⚠️ Cannot read file back after creation\n");
+                } else {
+                    appendLog($logFile, "✅ File read back successfully: " . strlen($readBack) . " bytes\n");
+                }
+            } else {
+                appendLog($logFile, "❌ CRITICAL: File does not exist immediately after creation!\n");
+                appendLog($logFile, "🔍 Current working directory: " . getcwd() . "\n");
+                appendLog($logFile, "🔍 Absolute path check: " . realpath($envFile) . "\n");
+            }
+        }
         
         // Create auto-loader include file
         $includeFile = "{$appDirectory}/auto-include.php";
@@ -299,18 +373,40 @@ function createCustomEnvFile($db, $appDirectory, $deployment, $logFile) {
         $includeContent .= "putenv('APP_DIRECTORY=" . addslashes($deployment['directory']) . "');\n\n";
         $includeContent .= "?>\n";
         
-        file_put_contents($includeFile, $includeContent);
-        appendLog($logFile, "Created auto-include file for easy integration.\n");
+        // Write the auto-include file
+        $includeResult = file_put_contents($includeFile, $includeContent);
+        if ($includeResult === false) {
+            appendLog($logFile, "❌ Failed to write auto-include file: {$includeFile}\n");
+            throw new Exception("Failed to write auto-include file");
+        } else {
+            appendLog($logFile, "✅ Created auto-include file: {$includeFile} (" . strlen($includeContent) . " bytes)\n");
+        }
         
         // Update the app's index.php to auto-include custom environment
         $indexFile = "{$appDirectory}/index.php";
         if (file_exists($indexFile)) {
+            appendLog($logFile, "🔍 ULTRA DEBUG: Analyzing index.php for auto-include integration\n");
+            
             $indexContent = file_get_contents($indexFile);
+            $fileSize = strlen($indexContent);
+            $isAutoGenerated = strpos($indexContent, 'Auto-generated landing page') !== false;
+            
+            appendLog($logFile, "📄 index.php analysis:\n");
+            appendLog($logFile, "   📊 File size: {$fileSize} bytes\n");
+            appendLog($logFile, "   🏭 Auto-generated: " . ($isAutoGenerated ? 'YES' : 'NO') . "\n");
             
             // Check if auto-include is already present
-            if (strpos($indexContent, "auto-include.php") === false) {
+            $hasAutoInclude = strpos($indexContent, "auto-include.php") !== false;
+            $hasRequireOnce = strpos($indexContent, "require_once __DIR__ . '/auto-include.php'") !== false;
+            
+            appendLog($logFile, "   🔗 Contains 'auto-include.php': " . ($hasAutoInclude ? 'YES' : 'NO') . "\n");
+            appendLog($logFile, "   ✅ Has proper require_once: " . ($hasRequireOnce ? 'YES' : 'NO') . "\n");
+            
+            if (!$hasAutoInclude) {
                 // Add auto-include at the beginning after opening PHP tag
                 $autoIncludeStatement = "\n// Auto-include custom environment variables\nrequire_once __DIR__ . '/auto-include.php';\n";
+                
+                appendLog($logFile, "🔧 Adding auto-include to existing index.php...\n");
                 
                 if (strpos($indexContent, '<?php') === 0) {
                     $indexContent = str_replace('<?php', '<?php' . $autoIncludeStatement, $indexContent);
@@ -318,11 +414,23 @@ function createCustomEnvFile($db, $appDirectory, $deployment, $logFile) {
                     $indexContent = '<?php' . $autoIncludeStatement . "\n?>" . $indexContent;
                 }
                 
-                file_put_contents($indexFile, $indexContent);
-                appendLog($logFile, "Updated index.php to auto-load custom environment variables.\n");
+                $updateResult = file_put_contents($indexFile, $indexContent);
+                if ($updateResult === false) {
+                    appendLog($logFile, "❌ Failed to update index.php with auto-include\n");
+                } else {
+                    $newSize = filesize($indexFile);
+                    appendLog($logFile, "✅ Successfully added auto-include to index.php\n");
+                    appendLog($logFile, "📊 Updated file size: {$newSize} bytes\n");
+                }
             } else {
-                appendLog($logFile, "index.php already includes auto-include.php.\n");
+                if ($isAutoGenerated) {
+                    appendLog($logFile, "✅ Auto-include already built into auto-generated landing page\n");
+                } else {
+                    appendLog($logFile, "ℹ️ index.php already includes auto-include.php (user-created file)\n");
+                }
             }
+        } else {
+            appendLog($logFile, "⚠️ index.php not found - this should not happen after landing page creation\n");
         }
         
     } catch (Exception $e) {

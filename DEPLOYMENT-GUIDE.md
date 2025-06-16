@@ -205,6 +205,8 @@ When applications are deployed, the system automatically:
 2. Creates an `auto-include.php` file for easy integration  
 3. Modifies the application's `index.php` to auto-load these variables
 
+**🛡️ Security Note:** The files `custom-env.php` and `auto-include.php` are intentionally hidden from web browsers by `.htaccess` rules for security. They exist on the filesystem and work correctly - they're just protected from direct web access to prevent exposure of environment variables.
+
 #### Manual Integration (if auto-include fails)
 
 If you need to manually include custom environment variables in your application:
@@ -1200,22 +1202,50 @@ No deployment logs visible
 - Git clone failures
 - Permission issues
 
-#### 5. PostgreSQL Syntax Errors
+#### 5. PostgreSQL Boolean Syntax Errors
 
 **Symptoms:**
 ```
-SQLSTATE[42601]: Syntax error: invalid input syntax for type boolean
-Rate limit check failed: syntax error at or near "$3"
+SQLSTATE[22P02]: Invalid text representation: 7 ERROR: invalid input syntax for type boolean: ""
+Failed to add custom env var: invalid input syntax for type boolean
 ```
+
+**Root Cause:** HTML checkboxes send empty strings when unchecked, but PostgreSQL boolean fields require explicit 'true'/'false' strings.
 
 **Fixed in latest version:**
 ```php
-// Old (broken):
-AND created_at > NOW() - INTERVAL ? SECOND
+// Enhanced boolean conversion for PostgreSQL compatibility
+function convertToPgBoolean($value) {
+    if ($value === true || $value === 'true' || $value === 1 || $value === '1' || $value === 'yes' || $value === 'on') {
+        return 'true';
+    } else {
+        return 'false';
+    }
+}
 
-// New (working):  
-AND created_at > NOW() - ? * INTERVAL '1 SECOND'
+// Use explicit parameter binding with PostgreSQL-compatible strings
+$stmt->bindParam(4, $pgBoolValue, PDO::PARAM_STR);
 ```
+
+#### 6. "Custom Environment Files Missing" (False Alarm)
+
+**Symptoms:**
+```
+Files custom-env.php and auto-include.php not visible in file browser
+Cannot access /apps/yourapp/custom-env.php directly
+```
+
+**This is NOT an error!** These files are intentionally hidden by `.htaccess` for security:
+
+```apache
+# Security protection in auto-generated .htaccess
+RedirectMatch 404 /auto-include\.php
+RedirectMatch 404 /custom-env\.php
+```
+
+**Verification:** Use the test endpoint at `/apps/yourapp/test-env.php` to verify files exist and work correctly.
+
+**Fixed in latest version:** Enhanced deployment logs now clearly indicate files are created and protected.
 
 ### Debug Tools
 
