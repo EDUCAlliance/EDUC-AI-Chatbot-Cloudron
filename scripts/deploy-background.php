@@ -50,13 +50,63 @@ try {
     $appDirectory = "/app/code/apps/{$deployment['directory']}";
     $logFile = "{$appDirectory}/deployment.log";
     
-    // Create app directory if it doesn't exist
+    // Create app directory first (minimal version)
     if (!is_dir($appDirectory)) {
         mkdir($appDirectory, 0755, true);
     }
     
-    // Initialize log
-    file_put_contents($logFile, "Deployment started at " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+    // Initialize log with comprehensive header
+    $initialLogContent = "================== DEPLOYMENT LOG ==================\n";
+    $initialLogContent .= "🚀 Deployment started at " . date('Y-m-d H:i:s T') . "\n";
+    $initialLogContent .= "📝 Deployment ID: {$deploymentId}\n";
+    $initialLogContent .= "📱 Application: {$deployment['name']}\n";
+    $initialLogContent .= "🌐 Repository: {$deployment['repository']}\n";
+    $initialLogContent .= "🌿 Branch: {$deployment['branch']}\n";
+    $initialLogContent .= "📂 Directory: {$deployment['directory']}\n";
+    $initialLogContent .= "🎯 Target path: {$appDirectory}\n";
+    $initialLogContent .= "=====================================================\n\n";
+    
+    file_put_contents($logFile, $initialLogContent, FILE_APPEND | LOCK_EX);
+    
+    // ULTRA DEEP Directory and Environment Setup
+    appendLog($logFile, "🔍 ULTRA DEBUG: Pre-deployment environment analysis\n");
+    appendLog($logFile, "🖥️ System info: " . php_uname() . "\n");
+    appendLog($logFile, "🐘 PHP version: " . phpversion() . "\n");
+    appendLog($logFile, "👤 Current user: " . get_current_user() . "\n");
+    appendLog($logFile, "📂 Working directory: " . getcwd() . "\n");
+    appendLog($logFile, "💾 Memory limit: " . ini_get('memory_limit') . "\n");
+    appendLog($logFile, "⏱️ Max execution time: " . ini_get('max_execution_time') . "\n");
+    
+    // Enhanced application directory verification
+    appendLog($logFile, "📁 Target application directory: {$appDirectory}\n");
+    appendLog($logFile, "📂 Directory exists: " . (is_dir($appDirectory) ? 'YES' : 'NO') . "\n");
+    
+    // Verify directory permissions and writability
+    $dirPerms = substr(sprintf('%o', fileperms($appDirectory)), -4);
+    $isWritable = is_writable($appDirectory);
+    $dirOwner = fileowner($appDirectory);
+    $dirGroup = filegroup($appDirectory);
+    
+    appendLog($logFile, "📊 Directory analysis:\n");
+    appendLog($logFile, "   🔐 Permissions: {$dirPerms}\n");
+    appendLog($logFile, "   ✍️ Writable: " . ($isWritable ? 'YES' : 'NO') . "\n");
+    appendLog($logFile, "   👤 Owner: {$dirOwner}, Group: {$dirGroup}\n");
+    
+    if (!$isWritable) {
+        appendLog($logFile, "⚠️ WARNING: Directory is not writable, attempting to fix...\n");
+        $fixCommand = "chmod 755 {$appDirectory} 2>&1";
+        $fixOutput = shell_exec($fixCommand);
+        appendLog($logFile, "🔧 Fix attempt output: " . ($fixOutput ?: "No output") . "\n");
+        
+        if (!is_writable($appDirectory)) {
+            appendLog($logFile, "❌ CRITICAL: Unable to make directory writable\n");
+            throw new Exception("Application directory is not writable: {$appDirectory}");
+        } else {
+            appendLog($logFile, "✅ Directory is now writable\n");
+        }
+    }
+    
+    appendLog($logFile, "✅ Pre-deployment setup complete\n\n");
     
     // Step 1: Clean existing files (except logs)
     appendLog($logFile, "Cleaning existing files...\n");
@@ -64,29 +114,147 @@ try {
     $cleanOutput = shell_exec($cleanCommand);
     appendLog($logFile, "Clean output: {$cleanOutput}\n");
     
-    // Step 2: Clone repository
-    appendLog($logFile, "Cloning repository: {$deployment['repository']}\n");
-    appendLog($logFile, "Branch: {$deployment['branch']}\n");
+    // Step 2: ULTRA DEEP Git Repository Cloning
+    appendLog($logFile, "🔍 ULTRA DEBUG: Git repository cloning process\n");
+    appendLog($logFile, "📂 Target app directory: {$appDirectory}\n");
+    appendLog($logFile, "📂 App directory exists: " . (is_dir($appDirectory) ? 'YES' : 'NO') . "\n");
+    appendLog($logFile, "📂 App directory writable: " . (is_writable($appDirectory) ? 'YES' : 'NO') . "\n");
+    appendLog($logFile, "🌐 Repository: {$deployment['repository']}\n");
+    appendLog($logFile, "🌿 Branch: {$deployment['branch']}\n");
     
-    $cloneCommand = "cd {$appDirectory} && git clone --depth 1 --branch {$deployment['branch']} {$deployment['repository']} temp 2>&1";
+    $tempDir = "{$appDirectory}/temp";
+    appendLog($logFile, "📁 Temporary clone directory: {$tempDir}\n");
+    
+    // Enhanced git clone with better error detection and timeout
+    $cloneCommand = "cd {$appDirectory} && timeout 300 git clone --depth 1 --branch {$deployment['branch']} --single-branch {$deployment['repository']} temp 2>&1";
+    appendLog($logFile, "⚡ Executing: {$cloneCommand}\n");
+    
     $cloneOutput = shell_exec($cloneCommand);
-    appendLog($logFile, "Clone output: {$cloneOutput}\n");
+    appendLog($logFile, "📝 Clone output: {$cloneOutput}\n");
     
-    if (!is_dir("{$appDirectory}/temp")) {
-        throw new Exception("Failed to clone repository");
+    // ULTRA VERIFICATION of clone success
+    if (!is_dir($tempDir)) {
+        appendLog($logFile, "❌ CRITICAL: Git clone failed - temp directory not created\n");
+        appendLog($logFile, "🔍 Possible causes:\n");
+        appendLog($logFile, "   - Invalid repository URL\n");
+        appendLog($logFile, "   - Branch '{$deployment['branch']}' doesn't exist\n");
+        appendLog($logFile, "   - Network connectivity issues\n");
+        appendLog($logFile, "   - Permission denied on repository\n");
+        appendLog($logFile, "   - Repository is private and requires authentication\n");
+        throw new Exception("Git clone failed: temp directory not created. Check repository URL and branch name.");
     }
     
-    // Step 3: Move files from temp to main directory
-    appendLog($logFile, "Moving files to application directory...\n");
-    $moveCommand = "cd {$appDirectory}/temp && cp -r . ../ && cd .. && rm -rf temp 2>&1";
-    $moveOutput = shell_exec($moveCommand);
-    appendLog($logFile, "Move output: {$moveOutput}\n");
+    // Check if temp directory has content
+    $tempFiles = scandir($tempDir);
+    $tempFileCount = count($tempFiles) - 2; // Exclude . and ..
+    appendLog($logFile, "📊 Cloned files count: {$tempFileCount}\n");
     
-    // Step 4: Set permissions
-    appendLog($logFile, "Setting file permissions...\n");
-    $permCommand = "chown -R www-data:www-data {$appDirectory} && chmod -R 755 {$appDirectory} 2>&1";
-    $permOutput = shell_exec($permCommand);
-    appendLog($logFile, "Permissions output: {$permOutput}\n");
+    if ($tempFileCount === 0) {
+        appendLog($logFile, "❌ CRITICAL: Git clone succeeded but no files found\n");
+        appendLog($logFile, "🔍 Repository appears to be empty or branch has no content\n");
+        throw new Exception("Git clone succeeded but repository appears empty");
+    }
+    
+    // Log some sample files for verification
+    $sampleFiles = array_slice($tempFiles, 2, 5); // Skip . and .., take first 5
+    appendLog($logFile, "📄 Sample cloned files: " . implode(', ', $sampleFiles) . "\n");
+    
+    // Step 3: ULTRA ROBUST File Moving Process
+    appendLog($logFile, "🚚 ULTRA DEBUG: Moving files to application directory\n");
+    
+    $moveSuccess = true;
+    $movedCount = 0;
+    $failedFiles = [];
+    
+    foreach ($tempFiles as $file) {
+        if ($file === '.' || $file === '..') continue;
+        
+        $source = "{$tempDir}/{$file}";
+        $dest = "{$appDirectory}/{$file}";
+        
+        appendLog($logFile, "🔄 Moving: {$file}...");
+        
+        // Check if destination already exists
+        if (file_exists($dest)) {
+            appendLog($logFile, " (overwriting existing)");
+        }
+        
+        $result = rename($source, $dest);
+        
+        if (!$result) {
+            appendLog($logFile, " ❌ FAILED\n");
+            $failedFiles[] = $file;
+            $moveSuccess = false;
+        } else {
+            appendLog($logFile, " ✅ SUCCESS\n");
+            $movedCount++;
+        }
+    }
+    
+    // Clean up temp directory
+    if (is_dir($tempDir)) {
+        $cleanupResult = rmdir($tempDir);
+        if ($cleanupResult) {
+            appendLog($logFile, "🗑️ Cleaned up temporary directory successfully\n");
+        } else {
+            appendLog($logFile, "⚠️ Failed to clean up temporary directory\n");
+        }
+    }
+    
+    // Final verification
+    appendLog($logFile, "📊 Move operation summary:\n");
+    appendLog($logFile, "   ✅ Successfully moved: {$movedCount} files/directories\n");
+    appendLog($logFile, "   ❌ Failed to move: " . count($failedFiles) . " items\n");
+    
+    if (!empty($failedFiles)) {
+        appendLog($logFile, "   📋 Failed files: " . implode(', ', $failedFiles) . "\n");
+        appendLog($logFile, "⚠️ Some files failed to move, but continuing deployment\n");
+    }
+    
+    if ($movedCount === 0) {
+        appendLog($logFile, "❌ CRITICAL: No files were moved successfully\n");
+        throw new Exception("File moving failed completely - no files were transferred");
+    } else {
+        appendLog($logFile, "✅ File moving completed with {$movedCount} successful transfers\n");
+    }
+    
+    // Step 4: ULTRA DEEP Permission Management
+    appendLog($logFile, "🔍 ULTRA DEBUG: File permissions and ownership setup\n");
+    
+    // Check current permissions before changes
+    appendLog($logFile, "📊 Current app directory permissions: " . substr(sprintf('%o', fileperms($appDirectory)), -4) . "\n");
+    appendLog($logFile, "👤 Current owner: " . fileowner($appDirectory) . ", Group: " . filegroup($appDirectory) . "\n");
+    
+    // Set ownership first
+    appendLog($logFile, "👥 Setting ownership to www-data:www-data...\n");
+    $chownCommand = "chown -R www-data:www-data {$appDirectory} 2>&1";
+    $chownOutput = shell_exec($chownCommand);
+    appendLog($logFile, "📝 Chown output: " . ($chownOutput ?: "No output (likely successful)") . "\n");
+    
+    // Set permissions for directories and files appropriately
+    appendLog($logFile, "🔐 Setting directory permissions (755) and file permissions (644)...\n");
+    $dirPermCommand = "find {$appDirectory} -type d -exec chmod 755 {} + 2>&1";
+    $dirPermOutput = shell_exec($dirPermCommand);
+    appendLog($logFile, "📁 Directory permissions output: " . ($dirPermOutput ?: "No output (likely successful)") . "\n");
+    
+    $filePermCommand = "find {$appDirectory} -type f -exec chmod 644 {} + 2>&1";
+    $filePermOutput = shell_exec($filePermCommand);
+    appendLog($logFile, "📄 File permissions output: " . ($filePermOutput ?: "No output (likely successful)") . "\n");
+    
+    // Make specific files executable if they exist
+    $executableFiles = ['connect.php', 'admin/index.php', 'src/console'];
+    foreach ($executableFiles as $file) {
+        $fullPath = "{$appDirectory}/{$file}";
+        if (file_exists($fullPath)) {
+            $execCommand = "chmod 755 {$fullPath} 2>&1";
+            $execOutput = shell_exec($execCommand);
+            appendLog($logFile, "⚡ Made executable: {$file}\n");
+        }
+    }
+    
+    // Verify final permissions
+    appendLog($logFile, "✅ Final app directory permissions: " . substr(sprintf('%o', fileperms($appDirectory)), -4) . "\n");
+    appendLog($logFile, "👤 Final owner: " . fileowner($appDirectory) . ", Group: " . filegroup($appDirectory) . "\n");
     
     // Step 5: Check for composer.json and install dependencies
     $composerFile = "{$appDirectory}/composer.json";
@@ -251,14 +419,44 @@ try {
 }
 
 function updateDeploymentStatus($db, $deploymentId, $status, $log) {
-    $completedAt = ($status === 'completed' || $status === 'failed') ? 'CURRENT_TIMESTAMP' : 'NULL';
-    
-    $stmt = $db->prepare("
-        UPDATE deployments 
-        SET status = ?, log = ?, completed_at = {$completedAt}
-        WHERE id = ?
-    ");
-    $stmt->execute([$status, $log, $deploymentId]);
+    try {
+        $completedAt = ($status === 'completed' || $status === 'failed') ? 'CURRENT_TIMESTAMP' : 'NULL';
+        
+        // Enhanced deployment status update with transaction safety
+        $db->beginTransaction();
+        
+        $stmt = $db->prepare("
+            UPDATE deployments 
+            SET status = ?, log = ?, completed_at = {$completedAt}, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
+        
+        $success = $stmt->execute([$status, $log, $deploymentId]);
+        
+        if (!$success) {
+            $db->rollback();
+            error_log("Failed to update deployment status for ID: {$deploymentId}");
+            return false;
+        }
+        
+        $affectedRows = $stmt->rowCount();
+        if ($affectedRows === 0) {
+            $db->rollback();
+            error_log("No deployment found with ID: {$deploymentId}");
+            return false;
+        }
+        
+        $db->commit();
+        error_log("Successfully updated deployment {$deploymentId} to status: {$status}");
+        return true;
+        
+    } catch (PDOException $e) {
+        if ($db->inTransaction()) {
+            $db->rollback();
+        }
+        error_log("Database error updating deployment status: " . $e->getMessage());
+        return false;
+    }
 }
 
 function appendLog($logFile, $message) {

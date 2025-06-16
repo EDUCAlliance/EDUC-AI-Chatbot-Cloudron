@@ -1103,17 +1103,28 @@ The admin dashboard shows accurate, real-time statistics:
 
 ### 🔄 Improved Deployment Process
 
-#### Enhanced Logging
-- All deployment steps are logged to `apps/{app-directory}/deployment.log`
-- Detailed Composer output with success/failure indicators
-- PHP path detection and fallback mechanisms
-- Permission setting and verification
+#### Enhanced Logging with ULTRA DEEP Analysis
+- **Comprehensive deployment logs** to `apps/{app-directory}/deployment.log`
+- **System environment analysis**: PHP version, memory limits, current user, permissions
+- **Pre-deployment verification**: Directory creation, writability checks, ownership analysis
+- **Git clone monitoring**: Repository validation, branch verification, file count tracking
+- **File operation tracking**: Individual file moves with success/failure status
+- **Permission management**: Granular ownership and permission setting with verification
+- **Composer debugging**: Multiple path detection, HOME environment setup, vendor verification
+- **Custom environment files**: Creation verification, file size tracking, permission analysis
 
 #### Deployment Status Tracking
 - **Pending**: Deployment queued
 - **Running**: Currently deploying (shows progress)
 - **Completed**: Successfully deployed and active
 - **Failed**: Deployment failed (with detailed error logs)
+
+#### Auto-Include Intelligence
+- **Smart detection**: Automatically detects if `index.php` already includes auto-include functionality
+- **Auto-generated pages**: Landing pages have auto-include built-in by design
+- **User files**: Safely adds auto-include to existing user-created index.php files
+- **Detailed analysis**: Logs file size, auto-generation status, and include verification
+- **No duplication**: Prevents duplicate auto-include statements in files
 
 #### Background Process Management
 ```bash
@@ -1246,6 +1257,63 @@ RedirectMatch 404 /custom-env\.php
 **Verification:** Use the test endpoint at `/apps/yourapp/test-env.php` to verify files exist and work correctly.
 
 **Fixed in latest version:** Enhanced deployment logs now clearly indicate files are created and protected.
+
+#### 7. Git Clone Failures
+
+**Symptoms:**
+```
+❌ CRITICAL: Git clone failed - temp directory not created
+Repository appears to be empty or branch has no content
+```
+
+**Enhanced diagnostics now show:**
+```
+🔍 Possible causes:
+   - Invalid repository URL
+   - Branch 'dev-pascal' doesn't exist
+   - Network connectivity issues
+   - Permission denied on repository
+   - Repository is private and requires authentication
+```
+
+**Solutions:**
+- Verify repository URL is public and accessible
+- Check branch name exists in repository
+- Test network connectivity from server
+- For private repos, configure authentication
+
+#### 8. File Moving Failures
+
+**Symptoms:**
+```
+❌ CRITICAL: No files were moved successfully
+Some files failed to move, but continuing deployment
+```
+
+**Enhanced logging shows individual file operations:**
+```
+🔄 Moving: composer.json... ✅ SUCCESS
+🔄 Moving: src/... ❌ FAILED
+📊 Move operation summary:
+   ✅ Successfully moved: 15 files/directories
+   ❌ Failed to move: 2 items
+```
+
+**Solutions:**
+- Check disk space on target directory
+- Verify file system permissions
+- Review specific failed files in logs
+
+#### 9. Permission Issues
+
+**Enhanced permission management now includes:**
+```
+📊 Current app directory permissions: 0755
+👤 Current owner: 33, Group: 33
+👥 Setting ownership to www-data:www-data...
+🔐 Setting directory permissions (755) and file permissions (644)...
+✅ Final app directory permissions: 0755
+```
 
 ### Debug Tools
 
